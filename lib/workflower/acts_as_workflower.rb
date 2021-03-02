@@ -1,13 +1,19 @@
+# frozen_string_literal: true
+
 require "active_support"
 
+# Workflower Module Defintion
 module Workflower
   mattr_accessor :workflower_state_column_name
   mattr_accessor :workflow_model
   mattr_accessor :transition_model
   mattr_accessor :conditions
+
+  # ActsAsWorkflower Module Definition
   module ActsAsWorkflower
     extend ActiveSupport::Concern
 
+    # InstanceMethods
     module InstanceMethods
       # mattr_accessor :workflower_base
       attr_accessor :possible_events, :allowed_events, :allowed_transitions
@@ -54,7 +60,9 @@ module Workflower
       end
     end
 
+    # Class Methods
     module ClassMethods
+      # rubocop:disable Metrics/AbcSize
       def workflower(options = { workflower_state_column_name: "workflow_state" })
         if options[:source].blank? || options[:conditions].blank?
           raise Workflower::WorkflowerError, "Options can't be blank"
@@ -75,21 +83,20 @@ module Workflower
       def workflower_abilities
         load = source.get_workflows.values.flatten.uniq
 
-        unless load.blank?
-          # transitions = load.transitions.where("(metadata->>'roles') IS NOT NULL")
-          transitions = load.select { |item| item.try(:[], :metadata).try(:key?, :roles) }
+        return [] if load.blank?
 
-          roles = transitions.map { |item| item[:metadata][:roles] }.flatten.uniq
+        # transitions = load.transitions.where("(metadata->>'roles') IS NOT NULL")
+        transitions = load.select { |item| item.try(:[], :metadata).try(:key?, :roles) }
 
-          roles_hash = {}
+        roles = transitions.map { |item| item[:metadata][:roles] }.flatten.uniq
 
-          roles.each do |role|
-            roles_hash[role] = transitions.select { |trans| trans[:metadata][:roles].to_a.include?(role) }.map { |item| item[:event] }.uniq
-          end
+        roles_hash = {}
 
-          roles_hash
-
+        roles.each do |role|
+          roles_hash[role] = transitions.select { |trans| trans[:metadata][:roles].to_a.include?(role) }.map { |item| item[:event] }.uniq
         end
+
+        roles_hash
       end
     end
 

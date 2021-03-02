@@ -2,6 +2,7 @@ module Workflower
   class Flow
     attr_accessor :state, :transition_into, :trigger_action_name, :boolean_action_name, :sequence, :downgrade_sequence, :event, :condition, :condition_type, :before_transit, :after_transit, :metadata, :workflow_id, :deviation_id
 
+    # rubocop:disable Metrics/AbcSize
     def initialize(options)
       @state               = options[:state]
       @transition_into     = options[:transition_into]
