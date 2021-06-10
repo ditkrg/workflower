@@ -49,6 +49,7 @@ module Workflower
           flow.call_after_transition(@calling_model)
           true
         rescue Exception
+          @calling_model.errors.add(@calling_model.workflower_state_column_name, :transition_faild)
           false
         end
       else
