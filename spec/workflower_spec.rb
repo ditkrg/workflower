@@ -12,6 +12,7 @@ RSpec.describe Workflower do
     @test.workflower_initializer
 
     @test.submit!
+    expect(@test.workflow_transition_event_name).to eq("submit")
     expect(@test.workflow_state).to eq("submitted")
   end
 end

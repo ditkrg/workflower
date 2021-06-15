@@ -16,7 +16,7 @@ module Workflower
     # InstanceMethods
     module InstanceMethods
       # mattr_accessor :workflower_base
-      attr_accessor :possible_events, :allowed_events, :allowed_transitions
+      attr_accessor :possible_events, :allowed_events, :allowed_transitions, :workflow_transition_event_name
 
       def set_intial_state
         write_attribute self.class.workflower_state_column_name, workflower_initial_state
@@ -39,6 +39,7 @@ module Workflower
 
         @workflower_base.allowed_transitions.each do |flow|
           define_singleton_method flow.trigger_action_name.to_s do
+            write_attribute :workflow_transition_event_name, flow.event
             @workflower_base.process_transition!(flow)
           end
 
