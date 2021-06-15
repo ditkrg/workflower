@@ -34,6 +34,7 @@ module Workflower
         source.get_workflows_for_workflow_id(workflow_id)
       end
 
+      def workflower_initializer
         @workflower_base ||= Workflower::Manager.new(self, source)
 
         @workflower_base.allowed_transitions.each do |flow|
