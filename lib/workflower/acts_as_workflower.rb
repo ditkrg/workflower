@@ -34,12 +34,11 @@ module Workflower
         source.get_workflows_for_workflow_id(workflow_id)
       end
 
-      def workflower_initializer
         @workflower_base ||= Workflower::Manager.new(self, source)
 
         @workflower_base.allowed_transitions.each do |flow|
           define_singleton_method flow.trigger_action_name.to_s do
-            write_attribute :workflow_transition_event_name, flow.event
+            @workflow_transition_event_name = flow.event
             @workflower_base.process_transition!(flow)
           end
 
