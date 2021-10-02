@@ -7,7 +7,7 @@ RSpec.describe Workflower do
     expect(Workflower::VERSION).not_to be nil
   end
 
-  it "transitions from saved to submitted" do 
+  it "transitions from saved to submitted" do
     @test = DummyFeature.new
     @test.workflower_initializer
 

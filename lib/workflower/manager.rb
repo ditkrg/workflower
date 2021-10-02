@@ -53,7 +53,8 @@ module Workflower
           false
         end
       else
-        @calling_model.errors.add(@calling_model.workflower_state_column_name, :precondition_not_met_to_process_transition)
+        @calling_model.errors.add(@calling_model.workflower_state_column_name,
+                                  :precondition_not_met_to_process_transition)
       end
     end
 

@@ -1,6 +1,7 @@
 module Workflower
   class Flow
-    attr_accessor :state, :transition_into, :trigger_action_name, :boolean_action_name, :sequence, :downgrade_sequence, :event, :condition, :condition_type, :before_transit, :after_transit, :metadata, :workflow_id, :deviation_id
+    attr_accessor :state, :transition_into, :trigger_action_name, :boolean_action_name, :sequence,
+                  :downgrade_sequence, :event, :condition, :condition_type, :before_transit, :after_transit, :metadata, :workflow_id, :deviation_id
 
     # rubocop:disable Metrics/AbcSize
     def initialize(options)
@@ -21,7 +22,7 @@ module Workflower
     end
 
     def before_transition_proc_name
-      !@before_transition.blank? ? @before_transition.to_sym : "before_workflow_#{event}".to_sym
+      @before_transition.blank? ? "before_workflow_#{event}".to_sym : @before_transition.to_sym
     end
 
     def call_before_transition(calling_model)
@@ -29,7 +30,7 @@ module Workflower
     end
 
     def after_transition_proc_name
-      !@after_transition.blank? ? @after_transition.to_sym : "after_workflow_#{event}".to_sym
+      @after_transition.blank? ? "after_workflow_#{event}".to_sym : @after_transition.to_sym
     end
 
     def call_after_transition(calling_model)
@@ -44,10 +45,10 @@ module Workflower
       if @condition_type == "expression"
 
         evaluation_phrase = @condition.split(" ").map do |item|
-          if !["||", "&&", "(", ")"].include?(item)
-            "calling_model.#{item}"
-          else
+          if ["||", "&&", "(", ")"].include?(item)
             item
+          else
+            "calling_model.#{item}"
           end
         end
 
@@ -62,7 +63,7 @@ module Workflower
     end
 
     def updateable_attributes(calling_model)
-      attributes = Hash[calling_model.workflower_state_column_name, @transition_into]
+      attributes = { calling_model.workflower_state_column_name => @transition_into }
       attributes[:sequence] = @downgrade_sequence.negative? ? @sequence : @downgrade_sequence
 
       attributes

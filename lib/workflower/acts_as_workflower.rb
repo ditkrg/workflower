@@ -16,7 +16,8 @@ module Workflower
     # InstanceMethods
     module InstanceMethods
       # mattr_accessor :workflower_base
-      attr_accessor :possible_events, :allowed_events, :allowed_transitions, :workflow_transition_event_name, :workflow_transition_flow
+      attr_accessor :possible_events, :allowed_events, :allowed_transitions, :workflow_transition_event_name,
+                    :workflow_transition_flow
 
       def set_intial_state
         write_attribute self.class.workflower_state_column_name, workflower_initial_state
@@ -95,7 +96,9 @@ module Workflower
         roles_hash = {}
 
         roles.each do |role|
-          roles_hash[role] = transitions.select { |trans| trans[:metadata][:roles].to_a.include?(role) }.map { |item| item[:event] }.uniq
+          roles_hash[role] = transitions.select do |trans|
+                               trans[:metadata][:roles].to_a.include?(role)
+                             end.map { |item| item[:event] }.uniq
         end
 
         roles_hash
