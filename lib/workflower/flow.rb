@@ -45,7 +45,7 @@ module Workflower
       if @condition_type == "expression"
 
         evaluation_phrase = @condition.split(" ").map do |item|
-          if ["||", "&&", "(", ")"].include?(item)
+          if ["||", "&&", "(", ")", "=="].include?(item)
             item
           else
             "calling_model.#{item}"
