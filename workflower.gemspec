@@ -10,7 +10,7 @@ Gem::Specification.new do |spec|
 
   spec.summary       = "A state-machine library that handles state management"
   spec.description   = "Using a finite state machine algorith, this gem allows to handle state of an entity with ease."
-  spec.homepage      = "https://github.com/broosk1993/workflower"
+  spec.homepage      = "https://github.com/ditkrg/workflower"
   spec.license       = "MIT"
   spec.required_ruby_version = Gem::Requirement.new(">= 2.5.0")
 
@@ -30,8 +30,8 @@ Gem::Specification.new do |spec|
   spec.require_paths = ["lib"]
 
   # Uncomment to register a new dependency of your gem
-  spec.add_dependency "activesupport", ">= 5.0.0.1"
-  spec.add_development_dependency "active_support"
+  spec.add_dependency "activesupport", ">= 6.0.0"
+  # spec.add_development_dependency "active_support", ">= 6.0.0"
   spec.add_development_dependency "byebug"
 
   # For more information and examples about making a new gem, checkout our

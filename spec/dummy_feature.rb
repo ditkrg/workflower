@@ -2,8 +2,6 @@
 
 require "workflower"
 require "workflow_source"
-require "byebug"
-
 class DummyFeature
   attr_accessor :workflow_id, :workflow_state, :sequence
 
