@@ -1,6 +1,5 @@
 require "workflower/errors"
 require "workflower/flow"
-require "byebug"
 module Workflower
   class Manager
     attr_reader :events, :flows_container, :allowed_events
