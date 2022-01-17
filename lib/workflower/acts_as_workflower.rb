@@ -1,3 +1,5 @@
+require "active_support"
+
 module Workflower
   mattr_accessor :workflower_state_column_name, :default_workflow_id
   module ActsAsWorkflower

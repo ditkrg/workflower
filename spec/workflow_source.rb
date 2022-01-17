@@ -1,5 +1,5 @@
 class WorkflowSource
-  def initialize
+  def initialize(_model)
     @workflows = {
       "1": [
         {

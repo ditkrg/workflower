@@ -20,7 +20,7 @@ class DummyFeature
     @sequence = attrs["sequence"]
   end
 
-  workflower source: WorkflowSource.new,
+  workflower source: WorkflowSource,
              workflower_state_column_name: "workflow_state",
-             conditions: { workflow_model_name: "DummyEntity" }
+             default_workflow_id: 1
 end
