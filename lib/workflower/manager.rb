@@ -37,7 +37,7 @@ module Workflower
     end
 
     def set_initial_state
-      @transitions.try(:first).try(:[], :state) || "saved"
+      "saved"
     end
 
     def process_transition!(flow)
