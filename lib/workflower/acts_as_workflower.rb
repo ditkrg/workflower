@@ -57,7 +57,7 @@ module Workflower
     end
 
     module ClassMethods
-      def workflower(default_workflow_id:, source:, workflower_state_column_name: "workflow_state")
+      def workflower(default_workflow_id:, source:, workflower_state_column_name: "workflow_state", skip_setting_initial_state: false)
         raise Workflower::WorkflowerError, "Options can't be blank" if source.blank? || default_workflow_id.blank?
 
         cattr_accessor :source,                       default: source
@@ -69,7 +69,7 @@ module Workflower
         self.default_workflow_id          = default_workflow_id
 
         # self.validates  "#{workflow_model.tableize.singularize}_id", presence: true
-        before_create :set_intial_state
+        before_create :set_intial_state unless skip_setting_initial_state
       end
 
       def workflower_abilities
