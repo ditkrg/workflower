@@ -50,6 +50,7 @@ module Workflower
 
       def workflower_uninitializer
         @workflower_base.uninitialize
+        @workflower_base = nil
 
         @possible_events     = []
         @allowed_events      = []
