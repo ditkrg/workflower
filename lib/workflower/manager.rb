@@ -18,6 +18,20 @@ module Workflower
       @validation_errors = []
     end
 
+    def uninitialize
+      @transitions = []
+      @current_state = []
+      @current_sequence = []
+      @calling_model    = []
+      @source           = []
+
+      # Flows
+      @flows_container = []
+      @events = []
+      @allowed_events = []
+      @validation_errors = []
+    end
+
     def buildup_flows
       possible_transitions.map { |transition| Workflower::Flow.new(transition) }
     end

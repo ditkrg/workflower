@@ -48,6 +48,14 @@ module Workflower
         @allowed_transitions ||= @workflower_base.allowed_transitions
       end
 
+      def workflower_uninitializer
+        @workflower_base.uninitialize
+
+        @possible_events     = []
+        @allowed_events      = []
+        @allowed_transitions = []
+      end
+
       def initialize(*)
         super
         write_attribute :workflow_id, default_workflow_id if workflow_id.blank?
