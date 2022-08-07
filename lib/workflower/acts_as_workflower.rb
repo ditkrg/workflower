@@ -9,7 +9,7 @@ module Workflower
       # mattr_accessor :workflower_base
       attr_accessor :possible_events, :allowed_events, :allowed_transitions, :workflow_transition_event_name, :workflow_transition_flow
 
-      def set_intial_state
+      def set_initial_state
         write_attribute self.class.workflower_state_column_name, workflower_initial_state
       end
 
@@ -52,9 +52,10 @@ module Workflower
         @workflower_base.uninitialize
         @workflower_base = nil
 
-        @possible_events     = []
-        @allowed_events      = []
-        @allowed_transitions = []
+        @source_workflow_instance = nil
+        @possible_events     = nil
+        @allowed_events      = nil
+        @allowed_transitions = nil
       end
 
       def initialize(*)
@@ -78,7 +79,7 @@ module Workflower
         self.default_workflow_id          = default_workflow_id
 
         # self.validates  "#{workflow_model.tableize.singularize}_id", presence: true
-        before_create :set_intial_state unless skip_setting_initial_state
+        before_create :set_initial_state unless skip_setting_initial_state
       end
 
       def workflower_abilities(workflow_selector: nil)
