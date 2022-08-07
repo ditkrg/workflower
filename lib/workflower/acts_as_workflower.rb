@@ -81,8 +81,10 @@ module Workflower
         before_create :set_intial_state unless skip_setting_initial_state
       end
 
-      def workflower_abilities
-        load = source.new(new).get_workflows.values.flatten.uniq
+      def workflower_abilities(workflow_selector: nil)
+        # workflow_selector helps dynamic transition selection when we have multiple workflows that needs to change depending on the selector.
+        load = source.new(new).get_workflows.values.flatten.uniq unless workflow_selector.present?
+        load = source.new(selector.to_sym).get_workflows.values.flatten.uniq if selector.present? 
 
         unless load.blank?
           # transitions = load.transitions.where("(metadata->>'roles') IS NOT NULL")
