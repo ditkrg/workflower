@@ -48,11 +48,11 @@ module Workflower
         @allowed_transitions ||= @workflower_base.allowed_transitions
       end
 
-      def workflower_uninitializer
+      def workflower_uninitializer(reset_source_workflow_instance: false)
         @workflower_base.uninitialize
         @workflower_base = nil
 
-        @source_workflow_instance = nil
+        @source_workflow_instance = nil if reset_source_workflow_instance
         @possible_events     = nil
         @allowed_events      = nil
         @allowed_transitions = nil
@@ -83,9 +83,9 @@ module Workflower
       end
 
       def workflower_abilities(workflow_selector: nil)
-        # workflow_selector helps dynamic transition selection when we have multiple workflows that needs to change depending on the selector.
+        # workflow_selector helps dynamic transition selection when we have multiple workflows that needs to change depending on the workflow_selector.
         load = source.new(new).get_workflows.values.flatten.uniq unless workflow_selector.present?
-        load = source.new(selector.to_sym).get_workflows.values.flatten.uniq if selector.present? 
+        load = source.new(workflow_selector.to_sym).get_workflows.values.flatten.uniq if workflow_selector.present? 
 
         unless load.blank?
           # transitions = load.transitions.where("(metadata->>'roles') IS NOT NULL")
