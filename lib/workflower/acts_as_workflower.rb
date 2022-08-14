@@ -9,7 +9,7 @@ module Workflower
       # mattr_accessor :workflower_base
       attr_accessor :possible_events, :allowed_events, :allowed_transitions, :workflow_transition_event_name, :workflow_transition_flow
 
-      def set_intial_state
+      def set_initial_state
         write_attribute self.class.workflower_state_column_name, workflower_initial_state
       end
 
@@ -48,13 +48,14 @@ module Workflower
         @allowed_transitions ||= @workflower_base.allowed_transitions
       end
 
-      def workflower_uninitializer
+      def workflower_uninitializer(reset_source_workflow_instance: false)
         @workflower_base.uninitialize
         @workflower_base = nil
 
-        @possible_events     = []
-        @allowed_events      = []
-        @allowed_transitions = []
+        @source_workflow_instance = nil if reset_source_workflow_instance
+        @possible_events     = nil
+        @allowed_events      = nil
+        @allowed_transitions = nil
       end
 
       def initialize(*)
@@ -78,11 +79,13 @@ module Workflower
         self.default_workflow_id          = default_workflow_id
 
         # self.validates  "#{workflow_model.tableize.singularize}_id", presence: true
-        before_create :set_intial_state unless skip_setting_initial_state
+        before_create :set_initial_state unless skip_setting_initial_state
       end
 
-      def workflower_abilities
-        load = source.new(new).get_workflows.values.flatten.uniq
+      def workflower_abilities(workflow_selector: nil)
+        # workflow_selector helps dynamic transition selection when we have multiple workflows that needs to change depending on the workflow_selector.
+        load = source.new(new).get_workflows.values.flatten.uniq unless workflow_selector.present?
+        load = source.new(workflow_selector.to_sym).get_workflows.values.flatten.uniq if workflow_selector.present? 
 
         unless load.blank?
           # transitions = load.transitions.where("(metadata->>'roles') IS NOT NULL")
