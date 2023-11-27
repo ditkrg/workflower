@@ -30,59 +30,64 @@ definition directory, usually placed in `lib/workflow_definitions`. In this dire
 state machine as per your need. Below here is a brief example of how to define a workflow state machine, note that
 this is an opinionated example and you can define your workflow state machine as per your need and your structure.
 
-### Workflow Definition Usage Example
+### Workflow Definition Usage with Example
 
-The below example shows a directory structure for a workflow definition directory. The directory structure is based on
-the model name. The model name is the name of the model that the workflow is being defined for. The model name is used
-to identify the workflow definition directory. The workflow definition directory contains the workflow definition files.
-The workflow definition files are named after the user roles that are associated with the workflow state. The workflow definition
-files contain the workflow state definitions (Examples provided below). The workflow definition files are Ruby files that are evaluated at runtime.
+To fully understand how the workflower gem works, we will use a hypothetical example.
 
-[//]: # "TODO: Add a finite state machine diagram image for the below example."
+---
+**Scenario**
 
-<center>
-    <img src="https://drive.google.com/u/2/uc?id=1NIvX8fd0MaI21hYraxTJrlwgvtFeuVva&export=download" alt="Workflow Definition Example" width="500"/>
+To apply for a competition, an applicant creates an application. The applicant then submits the application for review by an auditor. The auditor reviews the application and decides whether to accept, reject, or ask for changes to the application. If any changes are requested, the applicant makes the changes and resubmits the application for review by the auditor. The auditor reviews the application and decides whether to accept, ask for more changes or reject the application.
 
-</center>
-    The above diagram is a finite state machine diagram for the workflow definition example. Which is a hypothetical illustration of a workflow where an applicant submits an application for review by an auditor. The auditor reviews the application and sends it back to the applicant for correction. The applicant corrects the application and submits it back to the auditor for review. The auditor reviews the application and approves it or rejects it.
+---
 
-<br>
+---
+**Finite State Machine Diagram:**
+
+<img src="https://github.com/muhammadnawzad/workflower/assets/58137134/f948fc88-7e2d-4e6f-a8ff-5be4af165010" alt="Workflow Definition Example" width="500"/>
+
+---
 
 **Directory Structure Example:**
-
 ```
 lib
 └── workflow_definitions
-├── model_name
-│ ├── applicant.rb
-│ ├── auditor.rb
+├──── application
+│ ├──── applicant.rb
+│ ├──── auditor.rb
 ```
+
+<br>
 
 **Workflow Definition File Example:**
 
-Consider a hypothetical workflow definition file for the `applicant` role. The workflow definition file is named
-`applicant.rb` and is located in the `lib/workflow_definitions/model_name` directory.
-
 <br>
-<details>
-<summary>Click here to toggle the contents of applicant.rb</summary>
 
 ```ruby
-  # applicant.rb
+# ./lib/workflow_definitions/applications/applicant.rb
 
-    module WorkflowDefinitions
-        module ModelName
-            module V1
-                def self.own_actions(seq = 1)
+module WorkflowDefinitions
+  module ApplicationApplicant
+    module V1
+      def self.own_actions(seq = 1)
         [
           {
             state: 'saved',
             transition_into: 'submitted_for_review_by_applicant_to_auditor',
             event: 'submit_for_review_by_applicant_to_auditor',
+            
+            # Can optionally add a condition (method name in the model that return true/false):
+            # condition: 'can_submit_for_review_by_applicant_to_auditor?',
+
+            # Can optionally add an after_transition method (method name in the model):
+            # after_transition: 'process_submission',
+
+            # Can optionally add a before_transition method (method name in the model):
+            # before_transition: 'process_submission',
             sequence: seq,
             downgrade_sequence: -1,
             metadata: {
-              roles: %w[guest],
+              roles: %w[applicant],
               type: 'update',
               required_parameters: %i[]
             }
@@ -112,18 +117,14 @@ Consider a hypothetical workflow definition file for the `applicant` role. The w
 end
 ```
 
-</details>
 
 <br>
 
-<details>
-<summary>Click here to toggle the contents of auditor.rb</summary>
-
 ```ruby
-# auditor.rb
+# ./lib/workflow_definitions/applications/auditor.rb
 
 module WorkflowDefinitions
-  module ModelName
+  module ApplicationAuditor
     module V1
       def self.own_actions(seq = 1)
         [
@@ -212,80 +213,67 @@ module WorkflowDefinitions
 end
 ```
 
-</details>
-
 <br>
 
 **Workflow Initialization:**
 
 In order for the workflow to be initialized, the following steps must be taken:
 
-- The `workflow_state`, `sequence`, `workflow_id` columns must be added to the model's table.
-- The `workflow_state` column must be initialized with the `saved` value.
-- The `Workflows::WorkflowSource` module should be defined in model's concern.
-    <details>
-    <summary>See the example:</summary>
+1. Add the following columns to your model's table (e.g. Application model):
 
-  ```ruby
-  module Workflows
-    class WorkflowSource
-      Dir["#{Rails.application.root}/lib/workflow_definitions/model_name/*.rb"].each { |file| require file }
+    ```ruby
+        # ...
+        t.string  :workflow_state, null: false, default: 'saved', index: true
+        t.integer :sequence, null: false, default: 1
+        t.integer :workflow_id, null: false, default: 1
+        # ...
+    ```
 
-      def initialize(_model = nil)
-        @workflows = {
-          '1': [
-            *WorkflowDefinitions::ModelNameApplicant::V1.formulate,
-            *WorkflowDefinitions::ModelNameAuditor::V1.formulate
-          ].flatten
-        }
-      end
+2. Add the following lines to your model:
+    ```ruby
+    class Application < ApplicationRecord
+      include Workflower::ActsAsWorkflower # Example is given below
+      
+      # Workflower
+      workflower source: Workflows::Applications::WorkflowSource,
+                 workflower_state_column_name: 'workflow_state',
+                 default_workflow_id: 1,
+                 skip_setting_initial_state: true
+    end
+    ```
 
-      def get_workflows
-        @workflows
-      end
+3. Let's define `Workflows::WorkflowSource` module.
+    ```ruby
+    # ./app/models/concerns/workflows/applications/workflow_source.rb
 
-      def get_workflows_for_workflow_id(workflow_id)
-        get_workflows[workflow_id.to_s.to_sym]
+    module Workflows
+      class WorkflowSource
+        Dir["#{Rails.application.root}/lib/workflow_definitions/application/*.rb"].each { |file| require file }
+  
+        def initialize(_model = nil)
+          @workflows = {
+            '1': [
+              *WorkflowDefinitions::ApplicationApplicant::V1.formulate,
+              *WorkflowDefinitions::ApplicationAuditor::V1.formulate
+            ].flatten
+          }
+        end
+  
+        def get_workflows
+          @workflows
+        end
+  
+        def get_workflows_for_workflow_id(workflow_id)
+          get_workflows[workflow_id.to_s.to_sym]
+        end
       end
     end
-  end
+    ```
 
-  ```
 
-    </details>
+## Process Flow
 
-- Include the `include Workflower::ActsAsWorkflower` module in the model which comes with gem.
-- Add the following lines under the `include Workflower::ActsAsWorkflower` line in the model:
-  ```
-    workflower source: Workflows::WorkflowSource,
-    workflower_state_column_name: 'workflow_state',
-    default_workflow_id: 1,
-    skip_setting_initial_state: true
-  ```
-
-### Workflow Methods
-
-The followings are some methods provided by the gem.
-
-| Method                   | Description                                  |
-| ------------------------ | -------------------------------------------- |
-| workflower_initializer   | Used for initializing workflow for a model   |
-| workflower_uninitializer | Used for uninitializing workflow for a model |
-| source_workflow          | Returns source of a workflow                 |
-| workflower_initial_state | Return initial state of a workflow           |
-
-<!-- attr_accessor :possible_events, :allowed_events, :allowed_transitions, :workflow_transition_event_name, :workflow_transition_flow -->
-
-### Workflow Attribute Accessors
-
-The followings are some attribute accessors provided by the gem.
-| Attribute | Description |
-|---------------------------------|----------------------------------------------|
-| possible_events | Returns possible events for a instance |
-| allowed_events | Returns allowed events for a instance |
-| allowed_transitions | Returns allowed transitions for a instance |
-| workflow_transition_event_name | Returns event name for a transition |
-| workflow_transition_flow | Returns possible flows for a transition |
+The workflower's `process_transition!` method is responsible for processing the transition. It first checks if the condition is met. If the condition is met, it calls the `before_transition` method, then it updates the model's attributes, and finally it calls the `after_transition` method. If the condition is not met, it adds an error to the model.
 
 ## Development
 
