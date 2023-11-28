@@ -22,15 +22,290 @@ If bundler is not being used to manage dependencies, install the gem by executin
 
     $ gem install workflower
 
-## Usage
+## How it Works
+The workflower gem consists of three main components:
+   - [Flow Class](lib/workflower/flow.rb): The Flow class is responsible for defining the workflow state machine.
+   - [Manager Class](lib/workflower/manager.rb): The Manager class is responsible for processing the workflow state machine.
+   - [Acts As Workflower Module](lib/workflower/acts_as_workflower.rb): The Acts As Workflower module is an ActiveSupport::Concern that is responsible for adding the workflow functionality to the model.
 
-The installation command above will install the Workflower gem and its dependencies. However, the workflower gem does
-not provide any workflow definitions. The Workflower gem is designed to be used in conjunction with a workflow
-definition directory, usually placed in `lib/workflow_definitions`. In this directory you should define the workflow
-state machine as per your need. Below here is a brief example of how to define a workflow state machine, note that
-this is an opinionated example and you can define your workflow state machine as per your need and your structure.
+### Flow Class (State Machine Definition)
+The Flow class is responsible for defining the workflow state machine. It is mainly responsible for handling the workflow definition files. A workflow definition file is a ruby file that defines the workflow state machine check the **[Annex: 1.0: Workflow Definition File Example](#annex-10-workflow-definition-file-example)** to see how to define a workflow definition file.
 
-### Workflow Definition Usage with Example
+The Flow class requires each state machine to be defined as a hash, and each state machine must have the following keys:
+   - `state`: The state name.
+   - `transition_into`: The state name that this state can transition into.
+   - `event`: The event name that triggers the transition.
+   - `sequence`: The sequence number of the transition.
+   - `downgrade_sequence`: The downgrade sequence number of the transition.
+   - `metadata`: The metadata hash that contains the following keys:
+      - `roles`: An array of roles that are allowed to trigger the transition.
+      - `type`: The type of the transition, it can be either `update` or `create`.
+      - `required_parameters`: An array of required parameters that must be passed to the transition.
+      - Optionally, you can add any other keys to the metadata hash. for example a `send_notifications`, key that can be used to indicate whether to send notifications or not. You can also define a `permitted_parameters` key that can be used to define the permitted parameters in [JSON Schema](https://json-schema.org/) format the **[Annex 1.1: JSON Schema Example](#annex-11-json-schema-example)** to see how to define a JSON Schema and validate them.
+
+Each state can also optionally, have the following keys can be added to the hash:
+  - `condition`: The name of the method that will be called to check if the transition can be triggered. The method must return true or false.
+  - `before_transition`: The name of the method that will be called before the transition is triggered. Please check the [Process Flow](#process-flow) section for more details on the sequence in which the methods are called.
+  - `after_transition`: The name of the method that will be called after the transition is triggered. Please check the [Process Flow](#process-flow) section for more details on the sequence in which the methods are called.
+  - `condition_type`: The type of the condition, it can be `expression`, if not specified, it will be `method`. If the condition type is `expression`, the condition will be evaluated as an expression, otherwise it will be evaluated as a method.
+
+
+Typically, the workflow definition files are placed in a directory called `workflow_definitions` in the `lib` directory. However, you can place the workflow definition files anywhere you want, as long as you specify the path to the workflow definition files in the `source` option when initializing the workflower gem. We recommend defining the workflow definition files like the given example in the **[Annex 1.0: Workflow Definition File Example](#annex-10-workflow-definition-file-example)**.
+
+### Manager Class (State Machine Processor)
+The Manager class is responsible for processing the workflow state machine. When initialized, it requires the following parameters:
+   - `calling_model`: The model that is calling the workflow state machine.
+   - `source`: The source of the workflow state machine. The source must be an object that responds to the `get_workflows` method and returns a hash of workflow state machines.
+
+See the **[Annex 1.2: WorkflowSource Class Definition](#annex-12-workflow-source-example)** to see how to define a workflow source class.
+
+The Manager class is responsible for the following:
+   - Initializing the workflow state machine.
+   - Processing the workflow state machine.
+   - Validating the workflow state machine.
+   - Providing the allowed events.
+   - Providing the allowed transitions.
+   - Providing the validation errors.
+
+It also provides the following methods and accessors:
+   - `uninitialize`: Uninitializes the workflow state machine.
+   - `set_initial_state`: Sets the initial state of the workflow state machine (defaults to `saved`, but can be overridden).
+   - `process_transition!`: Processes the transition, please check the [Process Flow](#process-flow) section for more details on the sequence in which the methods are called.
+   - `allowed_events`: Returns the allowed events for the current state machine.
+   - `allowed_transitions`: Returns the allowed transitions from the current state machine.
+   - `validation_errors`: Returns the validation errors.
+   - `transition_possible?`: Checks if the transition is possible on the current state machine.
+
+Please check the **[Annex 1.3: Workflowable](#annex-13-workflowable)** section for more details on how to use these methods and accessors.
+
+#### Process Flow
+
+The workflower's `process_transition!` method is responsible for processing the state transition. It first checks if the `condition`. If the condition is met, it calls the `before_transition` method, then it updates the model's workflow attributes, as well as assigning the required parameters defined in the metadata, and finally it calls the `after_transition` method. If the condition is not met, it adds an error on the field `workflow_state` with key `transition_faild` to the model.
+
+### Acts As Workflower Module (The concern that adds the workflow functionality to the model)
+The Acts As Workflower module is an ActiveSupport::Concern that is responsible for adding the workflow functionality to the model. It consists of two main parts:
+   - Instance Methods**: The instance methods are responsible for initializing the workflow state machine, processing the workflow state machine, and uninitializing the workflow state machine.
+   - **Class Methods**: The class methods are responsible for defining the workflow state machine, and defining the workflow abilities.
+
+#### Instance Methods
+This module allows the model to initialize, process, and uninitialize the workflow state machine. It also allows the model to access the allowed events, allowed transitions, and validation errors. Under the hood, it uses the [Manager Class](#manager-class-state-machine-processor) class to do all the heavy lifting.
+
+Here is the list of instance methods and attributes provided by this module:
+  - `possible_events`: Returns the possible events for the current state machine.
+  - `allowed_events`: Returns the allowed events for the current state machine.
+  - `allowed_transitions`: Returns the allowed transitions from the current state machine.
+  - `workflow_transition_event_name`: Returns the name of the event that triggered the transition.
+  - `workflow_transition_flow`: Returns the flow object that contains the transition information.
+  - `set_initial_state`: Sets the initial state of the workflow state machine (defaults to `saved`, but can be overridden).
+  - `workflower_initial_state`: Returns the initial state of the workflow state machine (defaults to `saved`, but can be overridden).
+  - `workflower_base`: Returns the workflow manager object.
+  - `source_workflow`: Returns the workflow source object.
+  - `workflower_initializer`: Initializes the workflow state machine.
+  - `workflower_uninitializer`: Uninitializes the workflow state machine.
+
+#### Class Methods
+This module allows the model to define the workflow state machine, and define the workflow abilities. Under the hood, it uses the [Flow Class](#flow-class-state-machine-definition) class to do all the heavy lifting.
+
+Here is the list of class methods provided by this module:
+  - `workflower`: Defines the workflow state machine. This is a must to be invoked in order for the workflow state machine to be initialized. See the **[Annex 1.4: Workflower Initialization](#annex14-workflower-class-definition)**.
+  - `workflower_abilities`: Defines the workflow abilities based on the `roles` defined in the workflow definition files.
+
+## Annex
+This section contains the annexes that are referenced in the above sections.
+
+### Annex 1.0: Workflow Definition File Example
+
+```ruby
+# ./lib/workflow_definitions/<model_name>/<role_name>.rb
+
+module WorkflowDefinitions
+  module <ModelName><RoleName>
+    module V1
+      def self.own_actions(seq = 1)
+        [
+          {
+            state: "...",
+            transition_into: "...",
+            event: "...",
+            sequence: seq,
+            downgrade_sequence: -1,
+            metadata: {
+              roles: %w[...],
+              type: 'update',
+              required_parameters: %i[]
+            }
+          }
+
+          #...
+        ]
+      end
+
+      def self.formulate(seq = 1)
+        [
+          *own_actions(seq)
+        ]
+      end
+    end
+  end
+end
+```
+
+### Annex 1.1: JSON Schema Example
+
+```ruby
+# ./lib/workflow_definitions/<model_name>/<role_name>.rb
+# ...
+  metadata: { 
+#   ...
+    permitted_parameters: {
+    '$schema': 'http://json-schema.org/draft-07/schema#',
+      '$id': 'http://json-schema.org/draft-07/schema#',
+      type: 'object',
+      properties: {
+        workflow_comment: { type: 'string' }
+      },
+      required: %i[workflow_comment]
+    }
+#   ...
+  }
+# ...
+```
+
+```ruby
+# ./app/controllers/<model_name>_controller.rb
+# ...
+  def check_required_params_in_workflow(required_parameters = {})
+    metadata = @resource.workflow_transition_flow&.metadata&.dig(:permitted_parameters)
+  
+    return if metadata.blank?
+  
+    metadata.except!(:$id, :$schema)
+  
+    errors = JSON::Validator.fully_validate(metadata, required_parameters)
+  
+    nil if errors.blank?
+  end
+# ...
+```
+
+### Annex 1.2: Workflow Source Example
+
+```ruby
+# ./app/models/concerns/workflows/<model_name>/workflow_source.rb
+
+module Workflows
+  class WorkflowSource
+    Dir["#{Rails.application.root}/lib/workflow_definitions/<model_name>/*.rb"].each { |file| require file }
+
+    def initialize(_model = nil)
+      @workflows = {
+        '1': [
+          *WorkflowDefinitions::<ModelName><RoleName>::V1.formulate,
+          *WorkflowDefinitions::<ModelName><RoleName>::V1.formulate
+        ].flatten
+      }
+    end
+
+    def get_workflows
+      @workflows
+    end
+
+    def get_workflows_for_workflow_id(workflow_id)
+      get_workflows[workflow_id.to_s.to_sym]
+    end
+  end
+end
+```
+
+### Annex 1.3: Workflowable
+
+```ruby
+# ./app/models/concerns/workflows/<model_name>/workflowable.rb
+
+module Workflowable
+  def workflow_is_accessible_roles(given_workflow = workflow_state)
+    source_workflow.select do |item|
+      item[:state] == given_workflow && item.dig(:metadata, :roles).present?
+    end.flat_map do |flow|
+      condition_flow = flow[:condition]
+      if condition_flow.blank?
+        flow.dig(:metadata, :roles)
+      else
+        condition_type = flow[:condition_type] || ''
+        if condition_type.present? && condition_type == 'expression'
+          flow.dig(:metadata, :roles) if eval(condition_flow)
+        elsif send(condition_flow)
+          flow.dig(:metadata, :roles)
+        end
+      end
+    end.compact.uniq
+  end
+
+  def reached_flow_stage_for_role?(role)
+    workflow_is_accessible_roles.map(&:to_sym).include?(role.to_sym)
+  end
+
+  def apply_transition(event, &proc)
+    workflower_initializer if allowed_transitions.nil?
+    return false unless allowed_transitions.map(&:event).include?(event)
+
+    proc.call
+    return false unless send("can_#{event}?")
+
+    send("#{event}!")
+  end
+
+  def selected_flow(event)
+    allowed_transitions&.select { |flow| flow.event == event }.try(:first)
+  end
+
+  # rubocop:disable Style/OpenStructUse
+  def structified_flow_metadata(event)
+    selected = selected_flow(event)
+    return [] if selected.blank? || selected.try(:metadata).blank?
+
+    OpenStruct.new(selected.metadata)
+  end
+
+  def applicable_transitions_as_response(&callback)
+    workflower_initializer
+
+    workflower_base.allowed_transitions.map do |flow|
+      { command: flow.event.to_sym, metadata: flow.metadata.try(:slice, :permitted_parameters) || {} }
+    end
+                   .reject { |action| callback.call(action) }
+  end
+
+  # Utilities
+  def workflow_state_is?(state)
+    workflow_state.to_sym == state.to_sym
+  end
+
+  def workflow_state_is_any_of?(*states)
+    states.flatten.map { |item| item.to_sym if item.respond_to?(:to_sym) }.include?(workflow_state.to_sym)
+  end
+
+  def given_state_is_any_of?(*states, given_state:)
+    states.flatten.map { |item| item.to_sym if item.respond_to?(:to_sym) }.include?(given_state.to_sym)
+  end
+end
+```
+
+### Annex 1.4: Workflower Class Definition
+
+```ruby
+# ./app/models/<model_name>.rb
+# ...
+  include Workflower::ActsAsWorkflower
+# ...
+  workflower source: Workflows::<ModelName>::WorkflowSource,
+             workflower_state_column_name: 'workflow_state',
+             default_workflow_id: 1,
+             skip_setting_initial_state: true
+# ...
+```
+
+## Workflower Gem Usage with an Example
 
 To fully understand how the workflower gem works, we will use a hypothetical example.
 
@@ -57,11 +332,9 @@ lib
 │ ├──── auditor.rb
 ```
 
-<br>
 
-**Workflow Definition File Example:**
+#### Workflow Definition Filesadsa Example
 
-<br>
 
 ```ruby
 # ./lib/workflow_definitions/applications/applicant.rb
@@ -89,7 +362,16 @@ module WorkflowDefinitions
             metadata: {
               roles: %w[applicant],
               type: 'update',
-              required_parameters: %i[]
+              permitted_parameters: {
+                '$schema': 'http://json-schema.org/draft-07/schema#',
+                '$id': 'http://json-schema.org/draft-07/schema#',
+                type: 'object',
+                properties: {
+                  workflow_comment: { type: 'string' }
+                },
+                required: %i[workflow_comment]
+              },
+              required_parameters: %i[workflow_comment]
             }
           },
           {
@@ -118,7 +400,6 @@ end
 ```
 
 
-<br>
 
 ```ruby
 # ./lib/workflow_definitions/applications/auditor.rb
@@ -213,7 +494,6 @@ module WorkflowDefinitions
 end
 ```
 
-<br>
 
 **Workflow Initialization:**
 
@@ -270,10 +550,86 @@ In order for the workflow to be initialized, the following steps must be taken:
     end
     ```
 
+4. Add the [Workflowable](#annex-13-workflowable) concern module to your model:
+    ```ruby
+    class Application < ApplicationRecord
+      # ...
+      include Workflowable # Example is given below
+      
+      #...
+    end
+    ```
+   
+5. Add [CanCanCan](https://github.com/CanCanCommunity/cancancan) abilities, or your choice of authorizations, in our case, add the following lines to your `Ability` class:
+   ```ruby
+   class Ability
+     include CanCan::Ability
 
-## Process Flow
+     def initialize(user)
+       # ...
+       if user.role_is_a?('applicant')
+         can %i[submit_for_review_by_applicant_to_auditor], Application
+         can %i[submit_after_correction_by_applicant_to_auditor], Application
+       elsif user.role_is_a?('auditor')
+         can %i[send_for_correction_by_auditor_to_applicant], Application
+         can %i[reject_application_by_auditor], Application
+         can %i[approve_on_application_by_auditor], Application
+       end
+     
+       # Or you can use the following dynamic approach for a more advanced approach:
+       #   (Applicant.workflower_abilities.try(:with_indifferent_access).try(:[], :guest) || []).each do |action|
+       #     can action.to_sym, Applicant do |instance|
+       #       instance.reached_flow_stage_for_role?(:guest) && instance.creator_id == user.id
+       #     end
+       #   end 
+  
+       # ...
+     end
+   end
+   ```
+6. Handle the workflow transition in your controller (the following example is for the sake of simplicity, you can use a service object or any other approach):
+   ```ruby
+   class ApplicationsController < ApplicationController
+     # ...
+   def transit
+      @resource = Application.where(id: params[:id])# .include(eager_loads)
 
-The workflower's `process_transition!` method is responsible for processing the transition. It first checks if the condition is met. If the condition is met, it calls the `before_transition` method, then it updates the model's attributes, and finally it calls the `after_transition` method. If the condition is not met, it adds an error to the model.
+      raise ActiveRecord::RecordNotFound if @resource.blank?
+      @resource = @resource.first
+   
+      event = params[:event]
+      @resource.workflower_initializer
+      selected_flow_metadata = @resource.structified_flow_metadata(event)
+      @resource.assign_attributes(transition_extra_params(selected_flow_metadata)) if %w[update amend].include?(selected_flow_metadata.try(:type))
+
+      transition_check = @resource.apply_transition(event) do
+        authorize! event.to_sym, @resource
+      end
+
+      if transition_check
+        # Now save
+        if @resource.save
+          @resource.workflower_uninitializer
+          render jsonapi: @resource and return
+        else
+          # render errors and return if @resource.errors.any?
+        end
+      end
+
+      # render errors if reached here
+    end
+   
+    def transition_extra_params(given_flow)
+      return flow_extra_parameters(given_flow) if given_flow.present? && given_flow.try(:permitted_parameters).present?
+    end
+     # ...
+   end
+   ```
+   
+<br>
+
+The above steps are the minimum required steps to initialize the workflow state machine. However, you can add more steps to customize the workflow state machine to your needs. There is a lot more room for customization.
+
 
 ## Development
 
