@@ -42,7 +42,7 @@ module Workflower
     end
 
     def condition_is_met?(calling_model)
-      if @condition_type == "expression"
+      if @condition_type == "expression" && @condition.present?
 
         evaluation_phrase = @condition.split(" ").map do |item|
           if ["||", "&&", "(", ")", "=="].include?(item)
